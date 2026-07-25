@@ -19,12 +19,11 @@ jobs:
           netsh advfirewall firewall add rule name="RDP-Tailscale" dir=in action=allow protocol=TCP localport=3389
           Restart-Service -Name TermService -Force
 
-      - name: Create RDP User with Secure Password
+      - name: Create RDP User
         run: |
-          $pass = ConvertTo-SecureString "Tarak420#@" -AsPlainText -Force
-          New-LocalUser -Name "RDP" -Password $pass -PasswordNeverExpires $true
-          Add-LocalGroupMember -Group "Administrators" -Member "RDP"
-          Add-LocalGroupMember -Group "Remote Desktop Users" -Member "RDP"
+          net user RDP "Tarak420#@" /add
+          net localgroup Administrators RDP /add
+          net localgroup "Remote Desktop Users" RDP /add
 
       - name: Install Tailscale
         run: |
@@ -34,6 +33,35 @@ jobs:
           Invoke-WebRequest -Uri $tsUrl -OutFile $installerPath
           Start-Process msiexec.exe -ArgumentList '/i', "$installerPath", '/quiet', '/norestart' -Wait
           Remove-Item $installerPath -Force
+
+      - name: Establish Tailscale Connection
+        run: |
+          & "$env:ProgramFiles\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
+
+          $tsIP = $null
+          $retries = 0
+          while (-not $tsIP -and $retries -lt 10) {
+            $tsIP = & "$env:ProgramFiles\Tailscale\tailscale.exe" ip -4
+            Start-Sleep -Seconds 5
+            $retries++
+          }
+
+          if (-not $tsIP) {
+            Write-Error "Tailscale IP not assigned. Exiting."
+            exit 1
+          }
+
+          echo "TAILSCALE_IP=$tsIP" >> $env:GITHUB_ENV
+
+      - name: Maintain Connection
+        run: |
+          Write-Host "Tailscale IP: $env:TAILSCALE_IP"
+          Write-Host "Username: RDP"
+          Write-Host "Password: Tarak420#@"
+
+          while ($true) {
+            Start-Sleep -Seconds 300
+          }
 
       - name: Establish Tailscale Connection
         run: |
