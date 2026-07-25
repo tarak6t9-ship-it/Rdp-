@@ -9,6 +9,10 @@ jobs:
     timeout-minutes: 3600
 
     steps:
+      - name: Set Timezone to Bangladesh
+        run: Set-TimeZone -Id "Bangladesh Standard Time"
+        shell: powershell
+
       - name: Configure Core RDP Settings
         run: |
           # Enable Remote Desktop and disable Network Level Authentication (if needed)
